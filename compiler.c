@@ -4,11 +4,13 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <regex.h>
 
 #define STACK_SIZE 2048 
 #define HEAP_SIZE 2048
 #define COMMENT_CHAR 0x23 // so #
-
 /*
 Components:
  -> List of all asm instructions + their functionality
@@ -25,60 +27,78 @@ char* STACK [STACK_SIZE];
 char* HEAP [HEAP_SIZE];
 int* OPEN_FILE_DESCRIPTORS[64]; 
 
+
+
 int execute_assembly(char* code){
     // Defining all registers
-    long long rax;
-    long long rbx;
-    long long rcx;
+    long long rax = 0;
+    long long rbx = 0;
+    long long rcx = 0;
 
-    long long rdi;
-    long long rsi;
-    long long rdx;
+    long long rdi = 0;
+    long long rsi = 0;
+    long long rdx = 0;
     
-    long long rsp;
-    long long rbp;
+    long long rsp = 0;
+    long long rbp = 0;
     
-    long long rip;
-    long long flags;
-
-
-        
+    long long rip = 0;
+    long long flags = 0;
+            
 
 }
 
 char* deleteComments(char* code){
     size_t codeLength = strlen(code);
-    char* h_code = malloc(codeLength);
+
+    bool deleteChar;
+    char* p_cleanedCode = malloc(codeLength); 
+    char* p_start_cleanedCode = p_cleanedCode;
 
     int i;
-    bool deleteChar;
-    char* p_cleanedCode; 
-
     for (i = 0; i<codeLength;i++){
-        if (code[i] == 0xa){
+        if (*(code+i) == 0xa){
             deleteChar = false;
-        }else if(code[i] == COMMENT_CHAR){
+        }else if(*(code+i) == COMMENT_CHAR){
             deleteChar = true;  
         }
         // Deleting char == not copying it over
         if (!deleteChar){
             // Copy over one char to h_code (heap-code)
-            *p_cleanedCode = code[i];
+            *p_cleanedCode = *(code+i);
             p_cleanedCode ++;
         }
 
     }
 
-    return h_code;
-     
+    return p_start_cleanedCode;
 }
 
+
+
 int main(int argc,char* argv[]){
-    int program_fd = fopen("./example_program.lasm","r");
-    struct stat stat;
-    fstat(program_fd,&stat);
-    
-    printf("File size of ex-prog:%d\n",stat,st_size);
+    FILE* program_fd = NULL;
+    program_fd = fopen("./example_program.lasm","rb");
+
+    if (program_fd == NULL){
+        puts("Failed to open file.");
+        exit(1);
+    }
+
+    fseek(program_fd,0L,SEEK_END);
+    long sourceCodeSize = ftell(program_fd);
+    fseek(program_fd,0L,SEEK_SET);
+    printf("File size of example-prog:%ld\n",sourceCodeSize);
+        
+    // Copying file into fitting buffer on heap
+    char* code = malloc(sourceCodeSize);
+    fread(code,1,sourceCodeSize,program_fd);
+
+    printf("Code with Comments:\n%s\n",code);
+    char* uncommentedCode = deleteComments(code);
+    printf("After Removing Comments:\n%s\n", uncommentedCode);
+
+
     
     
      

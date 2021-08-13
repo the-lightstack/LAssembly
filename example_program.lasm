@@ -2,4 +2,7 @@ main:
     push rbp # Saving current stack frame
     mov rsp,rbp # Setting rsp and rbp equal
     sub rsp,0x10 # freein 16 byte on stack
+
+    mov rbp-0x10,0xdeadbeef
+    
     

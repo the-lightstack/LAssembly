@@ -1,2 +1,2 @@
 install:
-	gcc ./compiler.c -o compiler
+	gcc -g ./compiler.c -o out_compiler
