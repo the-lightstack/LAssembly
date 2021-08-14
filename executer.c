@@ -22,6 +22,7 @@ int execute_assembly(char* code){
     long long rax = 0;
     long long rbx = 0;
     long long rcx = 0;
+    long long rdx = 0;
 
     long long rdi = 0;
     long long rsi = 0;

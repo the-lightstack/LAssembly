@@ -1,25 +1,72 @@
 OP        CODE      NOTE                                LEN (oc+params)
 –––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
-push    -> 0x10     OC+byte(reg/val)+reg-byte/8b val     10bytes
-pop     -> 0x11     OC+amount(word/byte) +reg-byte       3bytes
+push    -> 0x10     OC+byte(reg/val)+reg-byte/8b val     10 bytes
+pop     -> 0x11     OC +reg-byte       2 bytes
 
-add     -> 0x12     add reg,[reg/val] + 8byte val        11bytes
-sub     -> 0x13     sub reg,[reg/val] + 8byte val        11bytes 
-and     -> 0x14     and reg,[reg/val] + 8byte val        11bytes 
-mul     -> 0x15     mul reg,[reg/val] + 8byte val        11bytes 
-div     -> 0x16     div reg,[reg/val] + 8byte val        11bytes 
-xor     -> 0x18     xor reg,[reg/val] + 8byte val        11bytes
+add     -> 0x12     add reg,reg                          3 bytes
+sub     -> 0x13     sub reg,reg                          3 bytes
+and     -> 0x14     and reg,reg                          3 bytes
+mul     -> 0x15     mul reg,reg                          3 bytes
+div     -> 0x16     div reg,reg                          3 bytes
+xor     -> 0x18     xor reg,reg                          3 bytes
 
 mov     -> 0x17     mov [reg/reg-loc] + 1byte, [val/reg-loc/reg] 8bytes>12 Bytes
-cmp     -> 0x19     cmp reg,[reg/val] + 8byte            11 bytes
+cmp     -> 0x19     cmp reg,reg                          3 bytes
 je      -> 0x20     je [reg/val],val // label in code    10 bytes
 jne     -> 0x21     jne [reg/val],val                    10 bytes
 jmp     -> 0x22     jmp [reg/val],val                    10 bytes
-syscall -> 0x23     syscall                              1 byte
+jg      -> 0x23     jg [reg/val],val                     10 bytes
+jl      -> 0x24     jl [reg/val],val                     10 bytes
+syscall -> 0x25     syscall                              1 byte
 
------------------
+–––––––––––– Pre arg deinition ––––––––––––––––
 
 [reg]     = 0x1
 [val]     = 0x2 // padded to 8 bytes
 [reg-loc] = 0x3
+
+
+–––––––––––– Reg byte mapping  ––––––––––––––––
+
+rax -> 0x50
+rbx -> 0x51
+rcx -> 0x52
+
+rdi -> 0x53
+rsi -> 0x54
+rdx -> 0x55
+
+rsp -> 0x56
+rbp -> 0x57
+
+rip -> 0x58  # Won't be used too much
+rbf  -> 0x59 # Only used by pre-compiler to beaufiy stuff [1] 
+
+flags -> 0x60
+
+––––––––– Syscalls –––––––––––––––––––––––––
+
+
+write       -> 0x80
+open        -> 0x81 
+read        -> 0x82
+exec?       -> 0x83
+
+printNum    -> 0x85
+
+
+
+–––––––––– Precompiler instructions ––––––––
+
+return 
+call
+(also push and pop?)
+
+
+
+
+–––––––– Appendix –––––––––––––––––
+[1] rbf will be used to change `cmp rax,0x1` (which is illegal) to a legal 
+    instruction like `mov rbf,0x1; cmp rax,rbf`. Leaving out the direct 
+    possibility to do this makes the opcodes MUCH cleaner and shorter
 

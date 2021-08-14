@@ -1,8 +1,49 @@
 main:
-    push rbp # Saving current stack frame
-    mov rsp,rbp # Setting rsp and rbp equal
-    sub rsp,0x10 # freein 16 byte on stack
+    xor rbp,rbp 
+    mov rsp,rbp
 
-    mov rbp-0x10,0xdeadbeef
+    mov rbf,0x10
+    sub rsp,rbf
+
+    # Defining i iterable
+    mov rbf,0x10 
+    sub rbp,rbf
+    mov [rbp],0x0 
+
+    xor rbx,rbx
+
+    # Defining addCounter
+    mov rbf,0x8
+    sub rbp,rbf
+    mov [rbp],0x0
+loop:    
+    # Put i into rax
+    mov rbf,0x10
+    sub rbp,rbf
+    mov rax,[rbp]
+    
+    add rbx,rax
+    
+    # i is still in rax
+    mov rbf, 0x10
+    cmp rax,rbf # Set's flag (LT;GT;ZF)
+    jne loop
+
+    # Loading added result into rax
+    mov rbf,0x8
+    sub rbp,rbf
+    mov rdi, [rbp]
+    
+    mov rax, 0x85 # Syscall for print Number
+    syscall 
+
+    # Calling exit!
+    mov rax,0x84
+    xor rdi,rdi
+    syscall
+    
+
+
+     
     
     
