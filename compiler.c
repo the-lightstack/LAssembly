@@ -9,7 +9,7 @@
 #include <regex.h>
 
 #define COMMENT_CHAR 0x23 // == #
-#define LINE_GROWTH_SIZE 0x60
+#define LINE_GROWTH_SIZE 0x60 // should be 0x60
 
 /*
 Components:
@@ -92,7 +92,7 @@ bool isOnlyWhitespace(char* line){
 
 char* parseLine(char* line){
     //"     xor rbp,rbp\x0a"
-    printf("NL: %s\n",line);
+    printf("NL: %s\n",lStripWhitespace(line));
 }
 
 
@@ -124,6 +124,7 @@ char* compileSourceCode(char* sourceCode){
                 parseLine(start_currentLine);
             }
             writtenCharsLine = 0;
+            continue;
             
         }
 
@@ -131,6 +132,7 @@ char* compileSourceCode(char* sourceCode){
         if (currentLine - start_currentLine + 1 >= currentLineSize){
             currentLineSize += LINE_GROWTH_SIZE;
             start_currentLine = realloc(start_currentLine,currentLineSize);
+            puts("Having to reallocate space!\n");
         }
         
         // Actual byte copying
