@@ -51,6 +51,7 @@ write       -> 0x80
 open        -> 0x81 
 read        -> 0x82
 exec?       -> 0x83
+exit        -> 0x84
 
 printNum    -> 0x85
 

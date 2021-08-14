@@ -1,0 +1,7 @@
+main:
+    mov rax,0x100
+    add rsp, 0x50
+    syscall
+
+    xor rbp,rbp
+    
