@@ -8,45 +8,17 @@
 #include <sys/stat.h>
 #include <regex.h>
 
-#define STACK_SIZE 2048 
-#define HEAP_SIZE 2048
 #define COMMENT_CHAR 0x23 // so #
+
 /*
 Components:
- -> List of all asm instructions + their functionality
- -> A stack 
+ -> List of all asm instructions + their opcodes
  -> syscalls for: write,print (takes just pointer, assumes stdout), open, 
     read, input (read for stdin)
- -> programm always starts at `main` label
+ -> program always starts at `_start` label
  -> first clean all comments
- -> maybe even include other files?
 */
 
-
-char* STACK [STACK_SIZE];
-char* HEAP [HEAP_SIZE];
-int* OPEN_FILE_DESCRIPTORS[64]; 
-
-
-
-int execute_assembly(char* code){
-    // Defining all registers
-    long long rax = 0;
-    long long rbx = 0;
-    long long rcx = 0;
-
-    long long rdi = 0;
-    long long rsi = 0;
-    long long rdx = 0;
-    
-    long long rsp = 0;
-    long long rbp = 0;
-    
-    long long rip = 0;
-    long long flags = 0;
-            
-
-}
 
 char* deleteComments(char* code){
     size_t codeLength = strlen(code);
@@ -73,7 +45,11 @@ char* deleteComments(char* code){
 
     return p_start_cleanedCode;
 }
+char* parseLine(char* line){
 
+
+
+}
 
 
 int main(int argc,char* argv[]){
