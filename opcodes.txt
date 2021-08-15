@@ -23,7 +23,7 @@ syscall -> 0x25     syscall                              1 byte
 
 [reg]     = 0x1
 [val]     = 0x2 // padded to 8 bytes
-[reg-loc] = 0x3
+[reg-loc] = 0x3 // so it is a pointer
 
 
 –––––––––––– Reg byte mapping  ––––––––––––––––

@@ -8,7 +8,9 @@
 #include <sys/stat.h>
 #include <regex.h>
 #include <signal.h>
-// #include <string_switch_case.h>
+#include <stdlib.h>     /* strtoll */
+
+#define u_char unsigned char
 
 #define COMMENT_CHAR 0x23 // == #
 #define LINE_GROWTH_SIZE 0x60 // should be 0x60
@@ -87,6 +89,20 @@ char* deleteComments(char* code){
 
     return p_start_cleanedCode;
 }
+// Should already be left-stripped!
+char* rStripWhitespace(char* line){
+    int lineLength = strlen(line);
+    char* strippedLine = malloc(lineLength);
+    int sl_offset = 0;
+    // Copy until we hit space/tab/newline
+    bool clearedWhitespace = false;
+    for (i = lineLength;i>=0; i--){
+        if (*(line+i) != 0x9 &&*(line+i) != 0x20 &&*(line+i) != 0xa &&){
+            clearedWhitespace = true;
+        }
+    }
+    
+}
 
 char* lStripWhitespace(char* line){
     int lineLength = strlen(line);
@@ -137,7 +153,7 @@ unsigned char getByteCode(char* text){
     for (i = 0; i<BYTE_LOOKUP_LEN;i++){
         t_regInsByteLookup sym = byteMappings[i];
         if (strcmp(text,sym.key) == 0){
-            return sym.val;
+            return (u_char)sym.val;
         }
     }
     printf("COMPILE ERROR: couldn't decode string '%s' to byte code!\n",text);
@@ -200,7 +216,24 @@ short parseTwoReg(char* lastPart){
     return retVal;
 }
 
-char* handleMovInstruction(char* params,char opCode){
+// BIG ENDIAN!, so highest bits first
+unsigned char* lluiToBytes(long long int number){
+    unsigned char* retVal = malloc(8);
+    retVal[7] = (u_char)number&0xff;
+    retVal[6] = (u_char)(number>>8)&0xff;
+    retVal[5] = (u_char)(number>>16)&0xff;
+    retVal[4] = (u_char)(number>>24)&0xff;
+    retVal[3] = (u_char)(number>>32)&0xff;
+    retVal[2] = (u_char)(number>>40)&0xff;
+    retVal[1] = (u_char)(number>>48)&0xff;
+    retVal[0] = (u_char)(number>>56)&0xff;
+
+    return retVal; 
+
+}
+
+
+char* handleMovInstruction(char* params,char opCode, u_char* compiledLine){
     // p1: reg/reg*
     // p2: reg/reg*/number [hex/dec]
     // seperator ","
@@ -215,6 +248,11 @@ char* handleMovInstruction(char* params,char opCode){
     char* firstParam = malloc(paramStringLen);
     char* secondParam = malloc(paramStringLen);
     bool usingFirstBuf = true; 
+    // Setting size of following instructions
+    compiledLine = malloc(sizeof(short)+12);
+
+    *(compiledLine) = (short)12;
+    *(compiledLine+1) = (u_char)opCode;
 
     int i;
     for (i = 0;i<paramStringLen; i++){
@@ -236,9 +274,95 @@ char* handleMovInstruction(char* params,char opCode){
             }
         }
     }
+    char* temp_free_1 = firstParam;
+    char* temp_free_2 = secondParam;
+
+    firstParam = lStripWhitespace(firstParam);
+    secondParam = lStripWhitespace(secondParam);
+
+    free(temp_free_1);
+    free(temp_free_2);
+
     printf("First part:%s\n",firstParam);
     printf("Second part:%s\n",secondParam);
-    return NULL;
+   
+    // HANDLING FIRST PARAMETER  
+    char regByteCode; 
+    // If first character is a star
+    if (*(firstParam) == 0x2a){
+        // Write byte 0x3 (pointer)
+        *(compiledLine+sizeof(short)+2) = 0x3;
+        // Now get Byte-code of firstParam +1 (dis-regarding star)
+        regByteCode = getByteCode(firstParam+1);
+    }else{
+        // Write byte 0x1 for normal register location
+        *(compiledLine+sizeof(short)+2) = 0x1;
+        regByteCode = getByteCode(firstParam);
+    }
+
+    // Writing register to next byte
+    if (regByteCode == 0xff){
+        fprintf(stderr,"Couldn't find byte code for first mov register\
+        (%s)\n",firstParam);
+    }
+    *(compiledLine+sizeof(short)+3) = regByteCode;
+
+    // HANDLING SECOND PARAMETER  
+    regByteCode = 0xff;  
+    if (*(secondParam) == 0x30  && *(secondParam+1) == 0x78){
+        // If first two chars are '0x' 
+        *(compiledLine+sizeof(short)+4) = (u_char)0x2; // a number
+
+        long long int num = strtoll(secondParam,NULL,16);
+        unsigned char* lluiByteNumber = lluiToBytes(num);
+        for (int i=0;i<8;i++){
+            *(compiledLine+sizeof(short)+5+i) = lluiByteNumber[i];
+        }
+
+    }else if(*(secondParam) >= 0x30 && *(secondParam) <= 0x39){ 
+        // If it is a number between 0-9
+        *(compiledLine+sizeof(short)+4) = (u_char)0x2; // a number
+        long long int num = strtoll(secondParam,NULL,10);
+        unsigned char* lluiByteNumber = lluiToBytes(num);
+        for (int i=0;i<8;i++){
+            *(compiledLine+sizeof(short)+5+i) = lluiByteNumber[i];
+        }
+
+    }else if (*(secondParam) == 0x2a){
+        // If it is a star
+        *(compiledLine+sizeof(short)+4) = (u_char)0x3; // a pointer
+        // Write 7 0x0 bytes, then reg number
+        for (int i=0;i<8;i++){
+            *(compiledLine+sizeof(short)+4+i) = (u_char)0x0;
+        }
+        regByteCode = getByteCode(secondParam+1);
+        if (regByteCode == 0xff){
+                fprintf(stderr,"Couldn't find byte code for second mov register\
+                (%s)\n",firstParam);
+            }
+        *(compiledLine+sizeof(short)+12) = regByteCode;
+
+    }else{
+        // Treat it as a normal register
+        *(compiledLine+sizeof(short)+4) = (u_char)0x1; // a normal reg
+        for (int i=0;i<8;i++){
+            *(compiledLine+sizeof(short)+4+i) = (u_char)0x0;
+        }
+        regByteCode = getByteCode(secondParam);
+        if (regByteCode == 0xff){
+                fprintf(stderr,"Couldn't find byte code for second mov register\
+                (%s)\n",firstParam);
+            }
+        *(compiledLine+sizeof(short)+12) = regByteCode;
+    }
+
+
+
+    // This is the end of the function
+    free(firstParam);
+    free(secondParam);
+
+    return compiledLine;
 
 }
 
@@ -302,7 +426,7 @@ char* parseLine(char* line){
     char* strippedLine = lStripWhitespace(line);
 
     // We return int(length)+compiled bytes [directly concated]
-    char* lenAndCompiledByteCode = malloc(sizeof(short)); 
+    unsigned char* lenAndCompiledByteCode = malloc(sizeof(short)); 
     
     char* operationString = malloc(strlen(strippedLine));  
     char* label = malloc(MAX_LABEL_LENGTH);
@@ -406,7 +530,7 @@ char* parseLine(char* line){
             }
              // *Mov* instruction
         if (opCode == 0x18){
-           handleMovInstruction(nextLinePart,opCode);
+           handleMovInstruction(nextLinePart,opCode,lenAndCompiledByteCode);
         }
     }
         
@@ -453,7 +577,9 @@ char* compileSourceCode(char* sourceCode){
             // Resetting point to start of string
             currentLine = start_currentLine; 
             if (!isOnlyWhitespace(start_currentLine)){
-                oneLineCompiled = parseLine(start_currentLine);
+                char* tempCurrentLine = rStripWhitespace(start_currentLine);
+                oneLineCompiled = parseLine(tempCurrentLine);
+                free(tempCurrentLine);
     
                 // printf("oneLineCompiled = %x\n",*(oneLineCompiled));
                 if ((short)*(oneLineCompiled) == 0x0){
@@ -520,7 +646,8 @@ int main(int argc,char* argv[]){
     //printf("Code with Comments:\n%s\n",code);
     char* uncommentedCode = deleteComments(code);
 
-    compileSourceCode(uncommentedCode);
+    // compileSourceCode(uncommentedCode);
+    char word [] = "Hello       "
     
     return 0;
 }
