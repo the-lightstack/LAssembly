@@ -1,16 +1,16 @@
 OP        CODE      NOTE                                LEN (oc+params)
 –––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
-push    -> 0x10     OC+byte(reg/val)+reg-byte/8b val     10 bytes
-pop     -> 0x11     OC +reg-byte       2 bytes
+push    -> 0x10     push reg                             2 bytes
+pop     -> 0x11     OC +reg-byte                         2 bytes
 
 add     -> 0x12     add reg,reg                          3 bytes
 sub     -> 0x13     sub reg,reg                          3 bytes
 and     -> 0x14     and reg,reg                          3 bytes
 mul     -> 0x15     mul reg,reg                          3 bytes
 div     -> 0x16     div reg,reg                          3 bytes
-xor     -> 0x18     xor reg,reg                          3 bytes
+xor     -> 0x17     xor reg,reg                          3 bytes
 
-mov     -> 0x17     mov [reg/reg-loc] + 1byte, [val/reg-loc/reg] 8bytes>12 Bytes
+mov     -> 0x18     mov [reg/reg-loc] + 1byte, [val/reg-loc/reg] 8bytes>12 Bytes
 cmp     -> 0x19     cmp reg,reg                          3 bytes
 je      -> 0x20     je [reg/val],val // label in code    10 bytes
 jne     -> 0x21     jne [reg/val],val                    10 bytes
@@ -62,6 +62,10 @@ printNum    -> 0x85
 return 
 call
 (also push and pop?)
+
+
+–––––––––––– Other Syntax –––––––––––––––
+Labels are decleared like `!main` and may not contain a space, max of 32 chars.
 
 
 

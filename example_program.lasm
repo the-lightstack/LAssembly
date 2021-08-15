@@ -1,4 +1,4 @@
-main:
+!main
     xor rbp,rbp 
     mov rsp,rbp
 
@@ -16,7 +16,7 @@ main:
     mov rbf,0x8
     sub rbp,rbf
     mov [rbp],0x0
-loop:    
+!loop    
     # Put i into rax
     mov rbf,0x10
     sub rbp,rbf
