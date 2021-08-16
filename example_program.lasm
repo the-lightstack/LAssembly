@@ -45,5 +45,10 @@
 
 
      
-    
+mov rax, 0x2     # mov 2 into rax
+mov rdi, 1       # mov 1 into rdi
+mov rax,*rdi     # mov val at rdi into rax
+mov rbx,rax      # mov rax into rax
+mov *rbx,0xff    # write 0xff to loc of rbx
+ 
     

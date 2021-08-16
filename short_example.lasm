@@ -1,7 +1,13 @@
-mov rax, 0x2     # mov 2 into rax
-mov rdi, 1       # mov 1 into rdi
-mov rax,*rdi     # mov val at rdi into rax
-mov rbx,rax      # mov rax into rax
-mov *rbx,0xff    # write 0xff to loc of rbx
+push rax
+pop rbx
+add rbx,rax # rbx now 0x30
+sub rbx,rax # back to 0x20
+and rbx,rax # nothing changes I think :)
+mul rbx,rax
+div rbx,rax
+xor rbx,rbx
+mov rax,0x20
+cmp rax, rbx
+syscall
 
 

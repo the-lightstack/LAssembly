@@ -19,7 +19,7 @@ jg      -> 0x23     jg [reg/val],val                     10 bytes
 jl      -> 0x24     jl [reg/val],val                     10 bytes
 syscall -> 0x25     syscall                              1 byte
 
-–––––––––––– Pre arg deinition ––––––––––––––––
+–––––––––––– Pre arg definition ––––––––––––––––
 
 [reg]     = 0x1
 [val]     = 0x2 // padded to 8 bytes
