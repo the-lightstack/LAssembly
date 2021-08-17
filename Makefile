@@ -1,2 +1,2 @@
 install:
-	gcc -g ./compiler.c -o out_compiler
+	gcc -g -Wall -Wextra ./compiler.c -o out_compiler

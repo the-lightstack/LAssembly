@@ -8,19 +8,19 @@
     # Defining i iterable
     mov rbf,0x10 
     sub rbp,rbf
-    mov [rbp],0x0 
+    mov *rbp,0x0 
 
     xor rbx,rbx
 
     # Defining addCounter
     mov rbf,0x8
     sub rbp,rbf
-    mov [rbp],0x0
+    mov *rbp,0x0
 !loop    
     # Put i into rax
     mov rbf,0x10
     sub rbp,rbf
-    mov rax,[rbp]
+    mov rax,*rbp
     
     add rbx,rax
     
@@ -32,7 +32,7 @@
     # Loading added result into rax
     mov rbf,0x8
     sub rbp,rbf
-    mov rdi, [rbp]
+    mov rdi, *rbp
     
     mov rax, 0x85 # Syscall for print Number
     syscall 

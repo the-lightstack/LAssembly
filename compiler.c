@@ -69,7 +69,7 @@ static t_regInsByteLookup byteMappings[] = {
 char* deleteComments(char* code){
     size_t codeLength = strlen(code);
 
-    bool deleteChar;
+    bool deleteChar = false;
     char* p_cleanedCode = malloc(codeLength+1); 
     if (p_cleanedCode == NULL){
         fprintf(stderr,"%s\n","malloc couldn't allocate more memore.");
@@ -78,7 +78,7 @@ char* deleteComments(char* code){
     memset(p_cleanedCode,0,codeLength+1);
     char* p_start_cleanedCode = p_cleanedCode;
 
-    int i;
+    unsigned int i;
     for (i = 0; i<codeLength;i++){
         if (*(code+i) == 0xa){
             deleteChar = false;
@@ -125,7 +125,6 @@ char* rStripWhitespace(char* line){
         exit(1);
     }
     memset(strippedLine,0,lineLength);
-    int sl_offset = 0;
     // Copy until we hit space/tab/newline
     int startNoWhitespace;
     printf("Line Length: %d\n",lineLength);
@@ -138,6 +137,8 @@ char* rStripWhitespace(char* line){
     }
 
     strncpy(strippedLine,line,startNoWhitespace+1); // printf("Right-stripped String: '%s'\n",strippedLine); return strippedLine;
+    puts("Reached end of rSTripWhitespace, do not use this function!");
+    exit(1);
 }
 
 char* lStripWhitespace(char* line){
@@ -177,7 +178,7 @@ char* lStripWhitespace(char* line){
 
 bool isOnlyWhitespace(char* line){
     // Returns True if line is only whitespace (tab/space/newline)
-    int i;
+    unsigned int i;
     for (i = 0; i<strlen(line); i++){
         char c = *(line+i);
         if (c != 0xa && c != 0x20 && c != 0x9 ){
@@ -187,8 +188,8 @@ bool isOnlyWhitespace(char* line){
     return true;
 }
 
-unsigned char getByteCode(char* text){
-    int i;
+char getByteCode(char* text){
+    unsigned int i;
     // printf("Looking up reg for byte %s\n",text);
     for (i = 0; i<BYTE_LOOKUP_LEN;i++){
         t_regInsByteLookup sym = byteMappings[i];
@@ -197,7 +198,7 @@ unsigned char getByteCode(char* text){
         }
     }
     printf("COMPILE ERROR: couldn't decode string '%s' to byte code!\n",text);
-    return 0xff;
+    return -1;
 }
 
 short parseTwoReg(char* lastPart){
@@ -207,15 +208,15 @@ short parseTwoReg(char* lastPart){
     // We have to use the len of lastPart, else copying 
     // too much whitespace causes a buffer overflow
     int inputSize = strlen(lastPart);
-    unsigned char firstReg [inputSize];
-    unsigned char secondReg [inputSize];
+    char firstReg [inputSize];
+    char secondReg [inputSize];
 
     memset(firstReg,0,inputSize);
     memset(secondReg,0,inputSize);
 
-    unsigned char twoRegReturn[2];
+    char twoRegReturn[2];
 
-    int i;
+    unsigned int i;
     bool copyFirstBuf = true;
     // printf("Last part passed to parseTwoReg:%s\n",lastPart);
     for (i = 0; i<strlen(lastPart);i++){
@@ -254,8 +255,8 @@ short parseTwoReg(char* lastPart){
 }
 
 // BIG ENDIAN!, so highest bits first
-unsigned char* lluiToBytes(long long int number){
-    unsigned char* retVal = malloc(8);
+char* lluiToBytes(long long int number){
+    char* retVal = malloc(8);
     if (retVal == NULL){
         fprintf(stderr,"%s\n","malloc couldn't allocate more memore.");
         exit(1);
@@ -274,12 +275,11 @@ unsigned char* lluiToBytes(long long int number){
 }
 
 
-u_char* handleMovInstruction(char* params,char opCode ){
+char* handleMovInstruction(char* params,char opCode ){
     // p1: reg/reg*
     // p2: reg/reg*/number [hex/dec]
     // seperator ","
 
-    printf("Parameters in handle Mov: %s\n",params);
     char* s_Params = lStripWhitespace(params);
     int paramStringLen = strlen(s_Params)+1;
 
@@ -301,7 +301,7 @@ u_char* handleMovInstruction(char* params,char opCode ){
 
     bool usingFirstBuf = true; 
     // Setting size of following instructions
-    u_char* compiledLine = malloc(sizeof(short)+12);
+    char* compiledLine = malloc(sizeof(short)+12);
     if (compiledLine == NULL){
         fprintf(stderr,"%s\n","malloc couldn't allocate more memore.");
         exit(1);
@@ -358,13 +358,12 @@ u_char* handleMovInstruction(char* params,char opCode ){
         regByteCode = getByteCode(firstParam+1);
     }else{
         // Write byte 0x1 for normal register location
-        puts("Normal register, writing 1");
         *(compiledLine+sizeof(short)+1) = 0x1;
         regByteCode = getByteCode(firstParam);
     }
 
     // Writing register to next byte
-    if (regByteCode == 0xff){
+    if (regByteCode == -1){
         fprintf(stderr,"Couldn't find byte code for first mov register\
         (%s)\n",firstParam);
     }
@@ -377,7 +376,7 @@ u_char* handleMovInstruction(char* params,char opCode ){
         *(compiledLine+sizeof(short)+3) = (u_char)0x2; // a number
 
         long long int num = strtoll(secondParam,NULL,16);
-        unsigned char* lluiByteNumber = lluiToBytes(num);
+        char* lluiByteNumber = lluiToBytes(num);
         for (int i=0;i<8;i++){
             *(compiledLine+sizeof(short)+4+i) = lluiByteNumber[i];
         }
@@ -386,7 +385,7 @@ u_char* handleMovInstruction(char* params,char opCode ){
         // If it is a number between 0-9
         *(compiledLine+sizeof(short)+3) = (u_char)0x2; // a number
         long long int num = strtoll(secondParam,NULL,10);
-        unsigned char* lluiByteNumber = lluiToBytes(num);
+        char* lluiByteNumber = lluiToBytes(num);
         for (int i=0;i<8;i++){
             *(compiledLine+sizeof(short)+4+i) = lluiByteNumber[i];
         }
@@ -399,7 +398,7 @@ u_char* handleMovInstruction(char* params,char opCode ){
             *(compiledLine+sizeof(short)+4+i) = (u_char)0x0;
         }
         regByteCode = getByteCode(secondParam+1);
-        if (regByteCode == 0xff){
+        if (regByteCode == -1){
                 fprintf(stderr,"Couldn't find byte code for second mov register\
                 (%s)\n",firstParam);
             }
@@ -412,7 +411,7 @@ u_char* handleMovInstruction(char* params,char opCode ){
             *(compiledLine+sizeof(short)+4+i) = (u_char)0x0;
         }
         regByteCode = getByteCode(secondParam);
-        if (regByteCode == 0xff){
+        if (regByteCode == -1){
                 fprintf(stderr,"Couldn't find byte code for second mov register\
                 (%s)\n",firstParam);
             }
@@ -438,7 +437,7 @@ u_char* handleMovInstruction(char* params,char opCode ){
 char parseOneReg(char* lastPart){
     // Read until "," then until newline
     char firstReg [strlen(lastPart)];
-    int i;
+    unsigned int i;
     for (i = 0; i<strlen(lastPart); i++){
         if (*(lastPart+i) != 0xa){
             *(firstReg+i) = *(lastPart+i);
@@ -450,7 +449,7 @@ char parseOneReg(char* lastPart){
 }
 
 
-void assembleTwoByteInstruction(char opcode, char reg,u_char* returnBuffer){
+void assembleTwoByteInstruction(char opcode, char reg,char* returnBuffer){
     // TODO: Fix this here!!
     short opcodeLength = 0x2;
     returnBuffer = realloc(returnBuffer,sizeof(short)+2);
@@ -491,12 +490,24 @@ char* handleThreeByteInstruction(char* nextLinePart,char opCode,char* result){
     return result; 
 }
 
-char* handleJumpInstruction(u_char opCode,char* label, char* labelDict, long labelDictLen){
+char* handleJumpInstruction(u_char opCode,char* label, char* placeholderAddr, 
+                    unsigned long* placeholderOffset,long* writtenBytes){
+    /* Filling in placeholder information */
     char* returnBuffer = malloc(sizeof(short)+1+sizeof(int));
-    // len-opCode-addr (no need for memset)
     *((short*)returnBuffer) = 5;
     *(returnBuffer+sizeof(short)) = opCode;
+    *((int*)(returnBuffer+3)) = 0xeeeeeeee;
 
+    /* Creating entry in placeholder dict */
+    strcpy(placeholderAddr+*placeholderOffset,label);
+    *((char*)(placeholderAddr+*placeholderOffset+strlen(label))) = 0x0;
+    *((int*)(placeholderAddr+*placeholderOffset+strlen(label)+1)) = ((int)*writtenBytes)+1;
+    *(placeholderOffset) += strlen(label)+1+4;
+
+    return returnBuffer;
+}
+
+unsigned int findLabelAddress(char* label,char* labelDict, long labelDictLen){
     // Parsing address from label
     int address = -1;
     for (int i=0; i<labelDictLen;){
@@ -510,11 +521,10 @@ char* handleJumpInstruction(u_char opCode,char* label, char* labelDict, long lab
         printf("Label '%s' does not exist. Abort Compilation.\n",label);
         exit(1);
     }
-    *((int*)(returnBuffer+3)) = address;
-    return returnBuffer;
+    return address;
 }
 
-char* parseLine(char* line,char* labelDictAddr,long labelDictLength){
+char* parseLine(char* line,char* jumpPlaceholders,unsigned long* jumpPlaceholderOffset,long* writtenBytes){
     /*
         Return Value
         sizeof(int) [Indicate size of byte code || if -1 label follows,
@@ -522,11 +532,13 @@ char* parseLine(char* line,char* labelDictAddr,long labelDictLength){
         Either label till 0x0 or byte sequence as compiled code ! Not \x00 end
     */ 
     
+    printf("%s\n",line);
+
     // ↓ Free this later again!
     char* strippedLine = lStripWhitespace(line);
 
     // We return int(length)+compiled bytes [directly concated]
-    unsigned char* lenAndCompiledByteCode = malloc(sizeof(short)); 
+    char* lenAndCompiledByteCode = malloc(sizeof(short)); 
     if (lenAndCompiledByteCode == NULL){
         fprintf(stderr,"%s\n","malloc couldn't allocate more memore.");
         exit(1);
@@ -573,7 +585,7 @@ char* parseLine(char* line,char* labelDictAddr,long labelDictLength){
 
     }else{
         // Read until first whitespace/ newline
-        int i;
+        unsigned int i;
         for (i = 0; i< strlen(strippedLine); i++){
             // Break out if we hit space or newline (not TAB!) 
             if (*(strippedLine+i) == 0x20 || *(strippedLine+i) == 0xa){
@@ -662,15 +674,15 @@ char* parseLine(char* line,char* labelDictAddr,long labelDictLength){
         // All the jump instructions
         switch (opCode){
             case 0x20:
-                return handleJumpInstruction(opCode,nextLinePart,labelDictAddr,labelDictLength);
+                return handleJumpInstruction(opCode,nextLinePart,jumpPlaceholders,jumpPlaceholderOffset,writtenBytes);
             case 0x21:
-                return handleJumpInstruction(opCode,nextLinePart,labelDictAddr,labelDictLength);
+                return handleJumpInstruction(opCode,nextLinePart,jumpPlaceholders,jumpPlaceholderOffset,writtenBytes);
             case 0x22:
-                return handleJumpInstruction(opCode,nextLinePart,labelDictAddr,labelDictLength);
+                return handleJumpInstruction(opCode,nextLinePart,jumpPlaceholders,jumpPlaceholderOffset,writtenBytes);
             case 0x23:
-                return handleJumpInstruction(opCode,nextLinePart,labelDictAddr,labelDictLength);
+                return handleJumpInstruction(opCode,nextLinePart,jumpPlaceholders,jumpPlaceholderOffset,writtenBytes);
             case 0x24:
-                return handleJumpInstruction(opCode,nextLinePart,labelDictAddr,labelDictLength);
+                return handleJumpInstruction(opCode,nextLinePart,jumpPlaceholders,jumpPlaceholderOffset,writtenBytes);
         }
 
     }
@@ -722,6 +734,18 @@ char* compileSourceCode(char* sourceCode,long* outputByteSize){
     short restSize;
     int lineCounter = 0;
 
+    /*
+    Format: <label>\x00<adress in source where to put label's addr (4byte)>
+    */
+    unsigned long* jumpPlaceholderOffset = malloc(sizeof(unsigned long));
+    *jumpPlaceholderOffset = 0;
+    char* jumpPlaceholders = malloc(sourceCodeSize+1);
+    if (jumpPlaceholders == NULL){
+        fprintf(stderr,"%s\n","malloc couldn't allocate more memore.");
+        exit(1);
+    }
+    memset(jumpPlaceholders,0,sourceCodeSize+1);
+
     long curAllocatedLabelDictSize = LABEL_ADDR_GROWTH_STEPS;
     long curLabelAddressWrittenBytes = 0;
     char* labelAddressDict = malloc(LABEL_ADDR_GROWTH_STEPS);
@@ -744,8 +768,8 @@ char* compileSourceCode(char* sourceCode,long* outputByteSize){
             currentLine = start_currentLine; 
             if (!isOnlyWhitespace(start_currentLine)){
                 char* tempCurrentLine = string_trim_inplace(start_currentLine);
-                oneLineCompiled = parseLine(tempCurrentLine,labelAddressDict,
-                                            curLabelAddressWrittenBytes);
+                oneLineCompiled = parseLine(tempCurrentLine,jumpPlaceholders,
+                                            jumpPlaceholderOffset,outputByteSize);
                 memset(start_currentLine,0,currentLineSize);
                 // printf("oneLineCompiled = %x\n",*(oneLineCompiled));
                 if (*((short*)oneLineCompiled) == 0x0){
@@ -834,15 +858,62 @@ char* compileSourceCode(char* sourceCode,long* outputByteSize){
         currentLine ++; 
 
     }
+
+    /*
+    Filling in labels found in jumpPlacholders TODO!
+    Looping over all placeholder entries
+    */
+
+    i = 0;
+    char* tempLabel = malloc(MAX_LABEL_LENGTH+1);
+    if (tempLabel == NULL){
+        fprintf(stderr,"%s\n","REALLOC couldn't allocate more memore.");
+        exit(1);
+    }
+    memset(tempLabel,0,MAX_LABEL_LENGTH+1);
+
+    unsigned int addressDestination = -1;
+    unsigned int address = -1;
+    for (i=0;i<*jumpPlaceholderOffset;){
+        /* the label one jump wants*/
+        strncpy(tempLabel,jumpPlaceholders+i,MAX_LABEL_LENGTH);
+        i += strlen(tempLabel)+1;
+        address = findLabelAddress(tempLabel,labelAddressDict,curLabelAddressWrittenBytes);
+        if (address == -1){
+            puts("Error when trying to find label.");
+        }
+        /*
+        Reading address where to put the label's address
+        */
+        addressDestination = *((int*)(jumpPlaceholders+i));
+        /* Writing real address to adressDestination */
+        *((int*)(p_compiledCode+addressDestination)) = address;
+        i += 4; 
+
+    }
+    if (tempLabel != NULL){
+        free(tempLabel);
+        tempLabel = NULL;
+    }
+    
+
+    puts("");
     puts("Compiled Source Code");
     return p_compiledCode; 
 }
 
 
 int main(int argc,char* argv[]){
+    /* Checking if enough command line arguments were supplied */
+    if (argc < 2){
+        puts("Supply source file as command line argument 1.");
+        exit(1);
+    }
+
+
     FILE* program_fd = NULL;
     // program_fd = fopen("./example_program.lasm","rb");
-    program_fd = fopen("./short_example.lasm","rb");
+    program_fd = fopen(argv[1],"rb");
 
     if (program_fd == NULL){
         puts("Failed to open file.");
@@ -874,7 +945,7 @@ int main(int argc,char* argv[]){
         exit(1);
     }
     *compiledCodeByteSize = (long)0x0;
-    u_char* p_compiledCode =  compileSourceCode(uncommentedCode,compiledCodeByteSize);
+    char* p_compiledCode =  compileSourceCode(uncommentedCode,compiledCodeByteSize);
 
     printf("Compiled Code Byte Size: %ld\n",*(compiledCodeByteSize));
     FILE* outFile_fd = NULL;
@@ -882,6 +953,5 @@ int main(int argc,char* argv[]){
     fwrite(p_compiledCode,1,(long)*compiledCodeByteSize,outFile_fd);
     fclose(outFile_fd);
     
-
     return 0;
 }
