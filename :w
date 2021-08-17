@@ -491,30 +491,7 @@ char* handleThreeByteInstruction(char* nextLinePart,char opCode,char* result){
     return result; 
 }
 
-char* handleJumpInstruction(u_char opCode,char* label, char* labelDict, long labelDictLen){
-    char* returnBuffer = malloc(sizeof(short)+1+sizeof(int));
-    // len-opCode-addr (no need for memset)
-    *((short*)returnBuffer) = 5;
-    *(returnBuffer+sizeof(short)) = opCode;
-
-    // Parsing address from label
-    int address = -1;
-    for (int i=0; i<labelDictLen;){
-        if (strcmp(labelDict+i,label) == 0){
-            address = *((int*)(labelDict+i+strlen(label)+1));
-            break;
-        }
-        i += strlen(labelDict+i)+1+4;
-    }
-    if (address == -1){
-        printf("Label '%s' does not exist. Abort Compilation.\n",label);
-        exit(1);
-    }
-    *((int*)(returnBuffer+3)) = address;
-    return returnBuffer;
-}
-
-char* parseLine(char* line,char* labelDictAddr,long labelDictLength){
+char* parseLine(char* line){
     /*
         Return Value
         sizeof(int) [Indicate size of byte code || if -1 label follows,
@@ -569,6 +546,7 @@ char* parseLine(char* line,char* labelDictAddr,long labelDictLength){
         memset(lenAndCompiledByteCode,0,sizeof(short)+strlen(label)+1);
         *((short* )lenAndCompiledByteCode) = (short)-1;
         strncpy(lenAndCompiledByteCode+sizeof(short),label,strlen(label)+1);
+        asm("int $3");
         return lenAndCompiledByteCode;
 
     }else{
@@ -656,23 +634,7 @@ char* parseLine(char* line,char* labelDictAddr,long labelDictLength){
         if (opCode == 0x18){
             lenAndCompiledByteCode = handleMovInstruction(nextLinePart,opCode);
             return lenAndCompiledByteCode; 
-        }
-
-        nextLinePart = string_trim_inplace(nextLinePart);
-        // All the jump instructions
-        switch (opCode){
-            case 0x20:
-                return handleJumpInstruction(opCode,nextLinePart,labelDictAddr,labelDictLength);
-            case 0x21:
-                return handleJumpInstruction(opCode,nextLinePart,labelDictAddr,labelDictLength);
-            case 0x22:
-                return handleJumpInstruction(opCode,nextLinePart,labelDictAddr,labelDictLength);
-            case 0x23:
-                return handleJumpInstruction(opCode,nextLinePart,labelDictAddr,labelDictLength);
-            case 0x24:
-                return handleJumpInstruction(opCode,nextLinePart,labelDictAddr,labelDictLength);
-        }
-
+            }
     }
     
     if (strippedLine != NULL){
@@ -725,7 +687,6 @@ char* compileSourceCode(char* sourceCode,long* outputByteSize){
     long curAllocatedLabelDictSize = LABEL_ADDR_GROWTH_STEPS;
     long curLabelAddressWrittenBytes = 0;
     char* labelAddressDict = malloc(LABEL_ADDR_GROWTH_STEPS);
-    memset(labelAddressDict,0,LABEL_ADDR_GROWTH_STEPS);
     if (labelAddressDict == NULL){
         fprintf(stderr,"%s\n","malloc couldn't allocate more memore.");
         exit(1);
@@ -744,8 +705,8 @@ char* compileSourceCode(char* sourceCode,long* outputByteSize){
             currentLine = start_currentLine; 
             if (!isOnlyWhitespace(start_currentLine)){
                 char* tempCurrentLine = string_trim_inplace(start_currentLine);
-                oneLineCompiled = parseLine(tempCurrentLine,labelAddressDict,
-                                            curLabelAddressWrittenBytes);
+                oneLineCompiled = parseLine(tempCurrentLine);
+
                 memset(start_currentLine,0,currentLineSize);
                 // printf("oneLineCompiled = %x\n",*(oneLineCompiled));
                 if (*((short*)oneLineCompiled) == 0x0){
@@ -770,25 +731,15 @@ char* compileSourceCode(char* sourceCode,long* outputByteSize){
                             exit(1);
                         }
                         if (newDictRegion != labelAddressDict){
-                            memset(newDictRegion,0,curAllocatedLabelDictSize);
                             // Realloc changed pointer location
                             int k;
                             for (k=0; k<curAllocatedLabelDictSize;k++){
                                 *(newDictRegion) = *(labelAddressDict);
                             }
-                        }else{
-                            memset(newDictRegion+curLabelAddressWrittenBytes,0,LABEL_ADDR_GROWTH_STEPS);
                         }
                         labelAddressDict = newDictRegion;
                     }
-                    // Copying over string
-                    strncpy(labelAddressDict+curLabelAddressWrittenBytes,oneLineCompiled+sizeof(short),MAX_LABEL_LENGTH);
-                    *(labelAddressDict+curLabelAddressWrittenBytes+strlen(oneLineCompiled)) = 0x0;
-                    curLabelAddressWrittenBytes += strlen(oneLineCompiled+sizeof(short))+1;
-
-                    // Getting address
-                    *((int*)(labelAddressDict+curLabelAddressWrittenBytes)) = (int)*(outputByteSize);
-                    curLabelAddressWrittenBytes += sizeof(int);
+                    
                 }
 
                  
@@ -808,9 +759,7 @@ char* compileSourceCode(char* sourceCode,long* outputByteSize){
                    *(outputByteSize) = *(outputByteSize) + 1;
                 }
                 // Maybe put this before loop
-                if(restSize != -1){
-                    compiledCode_offset += restSize;
-                }
+                compiledCode_offset += restSize;
                 
             }
             continue;

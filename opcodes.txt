@@ -12,11 +12,11 @@ xor     -> 0x17     xor reg,reg                          3 bytes
 
 mov     -> 0x18     mov [reg/reg-loc] + 1byte, [val/reg-loc/reg] 8bytes>12 Bytes
 cmp     -> 0x19     cmp reg,reg                          3 bytes
-je      -> 0x20     je [reg/val],val // label in code    10 bytes
-jne     -> 0x21     jne [reg/val],val                    10 bytes
-jmp     -> 0x22     jmp [reg/val],val                    10 bytes
-jg      -> 0x23     jg [reg/val],val                     10 bytes
-jl      -> 0x24     jl [reg/val],val                     10 bytes
+je      -> 0x20     je <4byte addr>                      5 bytes
+jne     -> 0x21     jne <4byte addr>                     5 bytes
+jmp     -> 0x22     jmp <4byte addr>                     5 bytes
+jg      -> 0x23     jg <4byte addr>                      5 bytes
+jl      -> 0x24     jl <4byte addr>                      5 bytes
 syscall -> 0x25     syscall                              1 byte
 
 –––––––––––– Pre arg definition ––––––––––––––––
@@ -46,7 +46,7 @@ flags -> 0x60
 
 ––––––––– Syscalls –––––––––––––––––––––––––
 
-
+( Not a part of compilation )
 write       -> 0x80
 open        -> 0x81 
 read        -> 0x82
@@ -56,18 +56,22 @@ exit        -> 0x84
 printNum    -> 0x85
 
 
-
 –––––––––– Precompiler instructions ––––––––
 
 return 
 call
 (also push and pop?)
 
+–––––––––––– Internal Label Structure ––
+Labels are stored in a char* with the format:
+<label-name>\x00<4byte address> 
+    ^               ^
+Max 32 byte    
+
 
 –––––––––––– Other Syntax –––––––––––––––
 Labels are decleared like `!main` and may not contain a space, max of 32 chars.
-
-
+You can later reference this label in the jump instructions like `jne main`
 
 
 –––––––– Appendix –––––––––––––––––
