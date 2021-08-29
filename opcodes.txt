@@ -68,10 +68,44 @@ Labels are stored in a char* with the format:
     ^               ^
 Max 32 byte    
 
+–––––––––––– FLAGS ––––––––––––
+cmp sets either the ZERO, GREATER or LESS flag 
+
+--- Table of flags ----
+ZERO        =   1
+GREATER     =   2
+LESS        =   4
+
+Internally compary OR's (|) the flags register with the flag
+
+The flags get reset to zero before every function/action/opcode that also sets
+them (cmp/sub/add/xor/and)
+
+–––––––––––– STACK AND HEAP –––––––––––– 
+
+The size of the stack and the heap will be defined at compile time and cannot
+be changed later. Both will always be at the same position. The stack starts
+at 0 and goes up to STACK_SIZE. The Heap starts immediately after (DANGEROUS?!)
+and goes from STACK_SIZE+1 up to STACK_SIZE+HEAP_SIZE. It is up to the executer
+to check that `push` and `pull` only access stack space and can't read/write 
+from/to the heap.
+
+The mov instruction only checks whether the read/write location is in between
+zero and STACK_SIZE+HEAP_SIZE
 
 –––––––––––– Other Syntax –––––––––––––––
 Labels are decleared like `!main` and may not contain a space, max of 32 chars.
 You can later reference this label in the jump instructions like `jne main`
+
+You can only read 8 bytes from a certain stack/heap address, so it is smart to
+read the value and then AND it with the amount of bytes you want.
+
+    mov rax,*rbx
+    mov rbf,0xffff
+    and rax,rbf
+
+To read two bytes at rbx (maybe add as macro?)
+
 
 
 –––––––– Appendix –––––––––––––––––

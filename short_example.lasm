@@ -1,7 +1,1 @@
-mov rax,0xdeadbeef
-!main
-push rax 
-jmp main
-jne other
-!other
-je other
+mov *rax,0x0123456789abcdef
