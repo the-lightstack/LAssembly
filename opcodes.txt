@@ -107,6 +107,12 @@ read the value and then AND it with the amount of bytes you want.
 To read two bytes at rbx (maybe add as macro?)
 
 
+The executor functions for jne/jl/jg return -1 if they don't perform any jump, 
+else they return the new rip location
+
+!! IMPORTANT !!
+Both the stack and the heap grow upwards, which means to create space on the 
+stack you INCREMENT rsp instead of the usual substraction.
 
 –––––––– Appendix –––––––––––––––––
 [1] rbf will be used to change `cmp rax,0x1` (which is illegal) to a legal 

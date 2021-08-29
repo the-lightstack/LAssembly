@@ -21,6 +21,12 @@
 #define GREATER 2
 #define LESS 4
 
+#define FLAGS_REGISTER_BYTECODE 0x60
+#define RIP_REGISTER_CODE 0x58
+#define RSP_REGISTER_CODE 0x57
+
+#define JUMP_INSTRUCTIONS_SIZE 5
+
 char* MEMORY [STACK_SIZE+HEAP_SIZE];
 int* OPEN_FILE_DESCRIPTORS[64];
 
@@ -187,6 +193,26 @@ long long* getRegisterPointer(u_char searchByte){
     return NULL;                                                                  
 }             
 
+void setZeroFlag(long long result){
+    /*
+    Function that first resets the zero flag and then sets it if the result
+    is equal to zero.
+    */ 
+    long long* flagsPointer = getRegisterPointer(FLAGS_REGISTER_BYTECODE);
+    /*
+    Setting the first bit to zero/ Resetting zero flag
+    */
+    *flagsPointer &= ~(1UL << 0);
+
+    if (result == 0){
+        /*
+        Setting the zero flag (first bit = 1)
+        */
+        *flagsPointer |= 1;
+    }
+
+}
+
 
 int addInstruction(u_char* instruction){
     /*
@@ -203,6 +229,7 @@ int addInstruction(u_char* instruction){
         exit(1);
     }
     *reg1_pointer = *reg1_pointer+*reg2_pointer;
+    setZeroFlag(*reg1_pointer+*reg2_pointer);
     return 3;
 }
 
@@ -221,6 +248,7 @@ int subInstruction(u_char* instruction){
         exit(1);
     }
     *reg1_pointer = *reg1_pointer - *reg2_pointer;
+    setZeroFlag(*reg1_pointer-*reg2_pointer);
     return 3;
 }
 
@@ -242,6 +270,7 @@ int andInstruction(u_char* instruction){
         exit(1);
     }
     *reg1_pointer = *reg1_pointer & *reg2_pointer;
+    setZeroFlag(*reg1_pointer&*reg2_pointer);
     return 3;
 }
 
@@ -261,6 +290,7 @@ int mulInstruction(u_char* instruction){
         exit(1);
     }
     *reg1_pointer = (*reg1_pointer) * (*reg2_pointer);
+    setZeroFlag((*reg1_pointer) * (*reg2_pointer));
     return 3;
 }
 
@@ -288,6 +318,7 @@ int divInstruction(u_char* instruction){
         exit(1);
     }
     *reg1_pointer = (long long)(*reg1_pointer) / (*reg2_pointer);
+    setZeroFlag((*reg1_pointer) / (*reg2_pointer));
     return 3;
 }
 
@@ -308,6 +339,7 @@ int xorInstruction(u_char* instruction){
         exit(1);
     }
     *reg1_pointer = (*reg1_pointer) ^ (*reg2_pointer);
+    setZeroFlag((*reg1_pointer) ^ (*reg2_pointer));
     return 3;
 }
 
@@ -322,7 +354,6 @@ int movInstruction(u_char* instruction){
     to. 
     1 = register / 3 = register location
     */
-    BREAKPOINT
     u_char specifier = *(instruction+1);
     u_char reg1 = *(instruction+2);
     long long* firstRegister = getRegisterPointer(reg1);
@@ -357,7 +388,6 @@ int movInstruction(u_char* instruction){
         /*
         Read 8 bytes and store them as the write Value
         */
-        BREAKPOINT
         writeValue = *((long long*)(instruction+4));
         /*
         We read it in the wrong byte order so we have to change it here.
@@ -419,17 +449,153 @@ int movInstruction(u_char* instruction){
     return 12;
 }
 
+int jmpInstruction(u_char* instruction, unsigned long codeSize){
+    /*
+    Returns the new value for the instruction pointer.
+    */
+    int jumpAddress = *((int*)(instruction+1));
+     
+    /*
+    Making sure you can only jump in the region the loaded code is in.
+    */
+    if (jumpAddress <= codeSize){
+        return jumpAddress;        
+    }
+    printf("Prohibited invalid jump to %d. (Instruction starts @ %p with\
+ codeSize of %lu\n",jumpAddress,instruction,codeSize);
+    exit(1);
+}
+
+int jneInstruction(u_char* instruction,unsigned long codeSize){
+    /*
+    Returns either the new rip if the zero flag was NOT set or -1 telling the
+    executor to just increment rip by 5 (the size of je/jne/jg/jl) 
+    */
+
+    /*
+    Check if zero flag is set
+    */
+    long long* flags = getRegisterPointer(FLAGS_REGISTER_BYTECODE);
+    
+    if (*flags & 1) {
+        return -1; 
+    }else{
+        return jmpInstruction(instruction,codeSize);
+    }
+}
+
+int jeInstruction(u_char* instruction,unsigned long codeSize){
+    /*
+    Returns either the new rip if the zero flag was set or -1 telling the
+    executor to just increment rip by 5 (the size of je/jne/jg/jl) 
+    */
+
+    /*
+    Check if zero flag is set
+    */
+    long long* flags = getRegisterPointer(FLAGS_REGISTER_BYTECODE);
+    
+    if (*flags & 1) {
+        return jmpInstruction(instruction,codeSize);
+    }else{
+        return -1; 
+    }
+}
+int jlInstruction(u_char* instruction,unsigned long codeSize){
+    /*
+    Returns either the new rip if the LESS flag was set or -1 telling the
+    executor to just increment rip by 5 (the size of je/jne/jg/jl) 
+    */
+
+    /*
+    Check if LESS flag is set
+    */
+    long long* flags = getRegisterPointer(FLAGS_REGISTER_BYTECODE);
+    
+    if ((*flags>>2) & 1) {
+        return jmpInstruction(instruction,codeSize);
+    }else{
+        return -1; 
+    }
+}
+
+int jgInstruction(u_char* instruction,unsigned long codeSize){
+    /*
+    Returns either the new rip if the GREATER flag was set or -1 telling the
+    executor to just increment rip by 5 (the size of je/jne/jg/jl) 
+    */
+
+    /*
+    Check if GREATER flag is set
+    */
+    long long* flags = getRegisterPointer(FLAGS_REGISTER_BYTECODE);
+    
+    if ((*flags>>1) & 1) {
+        return jmpInstruction(instruction,codeSize);
+    }else{
+        return -1; 
+    }
+}
+
+int pushInstruction(u_char* instruction){
+    /*
+    Pushes the 8 byte value stored in the provided register onto the stack
+    (at rsp) and increments rsp by 8.
+    Returns 2, the length of the instruction
+    */ 
+
+    /*
+    Check if enough space for the variable is remaining
+    */
+
+    long long* rspPointer = getRegisterPointer(RSP_REGISTER_CODE);
+    if (*rspPointer+8 > STACK_SIZE){
+        puts("Stack full, about to be oveflowed by push instruction.");
+        exit(1);
+    }
+
+    /*
+    Get the value of the register to be pushed
+    Create space on the stack for the variable
+    */
+    u_char registerByteCode = *(instruction+1);
+    long long* registerPointer = getRegisterPointer(registerByteCode);
+    long long registerValue = *registerPointer;
+
+    *(rspPointer) = registerValue;
+    *(rspPointer) += 8;
+
+    return 2;
+}
+
+int popInstruction(u_char* instruction){
+    /*
+    Checks if rsp is bigger than 8, if so it pops the value at rsp into 
+    the first provided register and then decrements rsp by 8.
+    returns 2, length of instruction (with opcode)
+    */
+    long long* rspPointer = getRegisterPointer(RSP_REGISTER_CODE);
+    if ()
 
 
-void executeInstruction(u_char* instruction,s_registers* registers){
+
+
+    return 2;
+}
+
+void executeInstruction(u_char* instruction,s_registers* registers,
+                        unsigned long codeSize){
     /*
     instruction is a pointer starting at the instruction we are executing.
     `instruction` shall be code+rip. After execution we increment rip by 
     the length of the previously executed instruction
+    CodeSize is needed for the jumps to check whether the jump is performed
+    in bounds of the loaded code to prevent exploits of the executer.
     */
     u_char opCode = *(instruction);
 
     int lenInstruction;
+    int newRIP = 0;
     switch(opCode){
         /* push */
         case 0x10:
@@ -477,18 +643,44 @@ void executeInstruction(u_char* instruction,s_registers* registers){
             break;
         /* je */
         case 0x20:
+            newRIP = jeInstruction(instruction,codeSize);
+            if (newRIP == -1){
+                *(registers->rip) += JUMP_INSTRUCTIONS_SIZE;
+            }else{
+                *(registers->rip) = newRIP;
+            }
             break;
         /* jne */
         case 0x21:
+            newRIP = jneInstruction(instruction,codeSize);
+            if (newRIP == -1){
+                *(registers->rip) += JUMP_INSTRUCTIONS_SIZE;
+            }else{
+                *(registers->rip) = newRIP;
+            }
             break;
         /* jmp */
         case 0x22:
+            newRIP = jmpInstruction(instruction,codeSize);
+            *(registers->rip) = (long long)newRIP;
             break;
         /* jg */
         case 0x23:
+            newRIP = jgInstruction(instruction,codeSize);
+            if (newRIP == -1){
+                *(registers->rip) += JUMP_INSTRUCTIONS_SIZE;
+            }else{
+                *(registers->rip) = newRIP;
+            }
             break;
         /* jl */
         case 0x24:
+            newRIP = jlInstruction(instruction,codeSize);
+            if (newRIP == -1){
+                *(registers->rip) += JUMP_INSTRUCTIONS_SIZE;
+            }else{
+                *(registers->rip) = newRIP;
+            }
             break;
         /* syscall */
         case 0x25:
@@ -502,7 +694,7 @@ void executeInstruction(u_char* instruction,s_registers* registers){
     
 }
 
-int execute_assembly(u_char* code,s_registers* registers){
+int execute_assembly(u_char* code,s_registers* registers,char* filename){
     /*
     First skips shebang then 
     Execute the instruction at the current instruction pointer forever.
@@ -513,8 +705,10 @@ int execute_assembly(u_char* code,s_registers* registers){
     if (code[0] == 0x23 && code[1] == 0x21){
         while (*(code) != 0xa) code++;
     }
+    unsigned long codeSize = getFileSize(filename);
+
     while (true){
-       executeInstruction(code+*(registers->rip),registers);
+       executeInstruction(code+*(registers->rip),registers,codeSize);
     }
 
 }
@@ -524,7 +718,7 @@ int main(int argc, char* argv[]){
     s_registers* registers = initRegisterLookup();
     char filename[] = DEFAULT_INPUT_FILE;
     u_char* byteCode = loadByteCode(filename);
-    execute_assembly(byteCode,registers);
+    execute_assembly(byteCode,registers,filename);
   
     return 0;
 }
