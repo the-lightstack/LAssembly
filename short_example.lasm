@@ -1,22 +1,33 @@
 !main
-# Auto-Generated Print Function
-mov rbf, 0x657320732774654c
-push rbf
-mov rbf, 0x20796d2066692065
-push rbf
-mov rbf, 0x726f772065646f63
-push rbf
-mov rbf, 0x000a2121736b
-push rbf
-mov rbf,0x20
-mov rcx,rsp
-sub rcx,rbf
+    # call-like 
+    mov rbf,rip
+    add rip
+    jmp printWelcomeText
+    
 
-mov rax,0x86
-mov rdi,rcx
-syscall
+!printWelcomeText
+    # Auto-Generated Print Function
+    mov rbf, 0x6120676e69646441
+    push rbf
+    mov rbf, 0x6e20656874206c6c
+    push rbf
+    mov rbf, 0x6620737265626d75
+    push rbf
+    mov rbf, 0x30322d30206d6f72
+    push rbf
+    mov rbf, 0x73746c7573657220
+    push rbf
+    mov rbf, 0x000a3a6e6920
+    push rbf
+    mov rax,0x86
+    mov rbf,0x30
+    mov rcx,rsp
+    sub rcx,rbf
+    mov rdi,rcx
+
+    pop rip
+
 jmp normal_exit
-
 !normal_exit
     mov rax,0x80
     mov rdi,0x0

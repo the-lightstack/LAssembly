@@ -29,7 +29,7 @@ def convert(s):
 def fullStringPrint(s):
     # Get all the right byte codes
     result = ""
-    codes = [i for i in convert(s).split("\n") if i is not ""]
+    codes = [i for i in convert(s).split("\n") if i != ""]
     print("codes:",codes)
     result += "# Auto-Generated Print Function\n"
     for i in codes:
@@ -46,4 +46,7 @@ def fullStringPrint(s):
     return result
 
 if __name__ == "__main__":
-    print(fullStringPrint("Let's see if my code works!!\n"))
+    if len(sys.argv) <2:
+        print("You have to supply the string to be converted!")
+        exit(1)
+    print(fullStringPrint("Adding all the numbers from 0-20 results in:\n"))

@@ -1,3 +1,8 @@
+
+# LAsm - Custom assembly Language
+
+# ↓ Documentation
+
 OP        CODE      NOTE                                LEN (oc+params)
 –––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 push    -> 0x10     push reg                             2 bytes
