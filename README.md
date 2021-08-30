@@ -2,7 +2,7 @@
 # LAsm - Custom assembly Language
 
 # ↓ Documentation
-
+```
 OP        CODE      NOTE                                LEN (oc+params)
 –––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 push    -> 0x10     push reg                             2 bytes
@@ -130,3 +130,4 @@ To write a single 'H'
     instruction like `mov rbf,0x1; cmp rax,rbf`. Leaving out the direct 
     possibility to do this makes the opcodes MUCH cleaner and shorter
 
+```
