@@ -23,7 +23,13 @@
 
 #define FLAGS_REGISTER_BYTECODE 0x60
 #define RIP_REGISTER_CODE 0x58
-#define RSP_REGISTER_CODE 0x57
+#define RSP_REGISTER_CODE 0x56
+#define RAX_REGISTER_CODE 0x50
+
+#define RDI_REGISTER_CODE 0x53
+#define RSI_REGISTER_CODE 0x54
+#define RDX_REGISTER_CODE 0x55
+#define RCX_REGISTER_CODE 0x52
 
 #define JUMP_INSTRUCTIONS_SIZE 5
 
@@ -189,7 +195,8 @@ long long* getRegisterPointer(u_char searchByte){
             return sym.regLoc;                                             
         }                                                                       
     }                                                                           
-    puts("Invalid register in instruction given.");
+
+    printf("Invalid register in instruction given. [%x]\n",searchByte);
     return NULL;                                                                  
 }             
 
@@ -358,6 +365,7 @@ int movInstruction(u_char* instruction){
     u_char reg1 = *(instruction+2);
     long long* firstRegister = getRegisterPointer(reg1);
 
+
     if (firstRegister == NULL){
         puts("Execution Aborted, couldn't parse registers.");
         exit(1);
@@ -435,7 +443,7 @@ int movInstruction(u_char* instruction){
         long long registerValue = *firstRegister;
         if (registerValue >= 0 && registerValue+8 <= STACK_SIZE+HEAP_SIZE){
             // Performing write operation 
-            *((long long*)(MEMORY+registerValue)) = writeValue;
+            *((long long*)((u_char*)MEMORY+registerValue)) = writeValue;
         }else{
             printf("Out of bounds write to %lld detected!\n",registerValue);
             exit(1);
@@ -453,7 +461,7 @@ int jmpInstruction(u_char* instruction, unsigned long codeSize){
     /*
     Returns the new value for the instruction pointer.
     */
-    int jumpAddress = *((int*)(instruction+1));
+    unsigned int jumpAddress = *((int*)(instruction+1));
      
     /*
     Making sure you can only jump in the region the loaded code is in.
@@ -553,7 +561,6 @@ int pushInstruction(u_char* instruction){
         puts("Stack full, about to be oveflowed by push instruction.");
         exit(1);
     }
-
     /*
     Get the value of the register to be pushed
     Create space on the stack for the variable
@@ -562,7 +569,7 @@ int pushInstruction(u_char* instruction){
     long long* registerPointer = getRegisterPointer(registerByteCode);
     long long registerValue = *registerPointer;
 
-    *(rspPointer) = registerValue;
+    *((long long*)((u_char*)MEMORY+*(rspPointer))) = registerValue;
     *(rspPointer) += 8;
 
     return 2;
@@ -575,13 +582,103 @@ int popInstruction(u_char* instruction){
     returns 2, length of instruction (with opcode)
     */
     long long* rspPointer = getRegisterPointer(RSP_REGISTER_CODE);
-    if ()
-
-
-
+    if (*(rspPointer) >= 8){
+        long long* registerPointer = getRegisterPointer(*(instruction+1));
+        *(registerPointer) = *((long long*)(*rspPointer+(u_char*)MEMORY));
+        *(rspPointer) -= 8;
+    }else{
+        puts("Can't pop any more values, rsp is already smaller than 8");
+        exit(1);
+    }
 
     return 2;
 }
+
+
+int cmpInstruction(u_char* instruction){
+    /*
+    The compare instruction compares the two provided registers and sets
+    the according FLAGS register bits. When both register contain the same 
+    value, it sets the ZERO flag. When the second register is bigger than the
+    first one, it sets the GREATER flag (2) and if the second registers value
+    smaller, it sets the LESS flag (4).
+    It returns the instruction (+opcode) length.
+    */
+    long long* firstRegister = getRegisterPointer(*(instruction+1));
+    long long* secondRegister = getRegisterPointer(*(instruction+2));
+    
+    long long* flagsRegister = getRegisterPointer(FLAGS_REGISTER_BYTECODE);
+
+    if (*firstRegister == *secondRegister){
+        /*
+        Setting zero flag
+        */
+        *flagsRegister |= 1UL << 0;
+    }else if(*secondRegister > *firstRegister){
+        /*
+        Setting GREATER flag
+        */
+        *flagsRegister |= 1UL << 1;
+    }else if(*secondRegister < *firstRegister){
+        /*
+        Setting LESS flag
+        */
+        *flagsRegister |= 1UL << 2;
+    }
+
+    return 3;
+}
+
+int syscallInstruction(unsigned long codeSize){
+    /*
+    This function allows the service to interact with the actual operation
+    system. This includes printing (as shortcut for write(stdin,...)), exit,
+    write, open, close and read. More can easily be added here.
+    
+    RAX contains the number of the syscall to execute and the parameters are
+    given through rdi, rsi, rdx in this order.
+
+    A list with the number-syscall mapping can be seen in the documentation.
+    */
+
+    long long* raxRegisterPointer = getRegisterPointer(RAX_REGISTER_CODE);
+    long long raxValue = *raxRegisterPointer;
+
+    long long* rdiRegisterPointer = getRegisterPointer(RDI_REGISTER_CODE);
+    long long* rsiRegisterPointer = getRegisterPointer(RSI_REGISTER_CODE);
+    long long* rdxRegisterPointer = getRegisterPointer(RDX_REGISTER_CODE);
+
+    switch(raxValue){
+        /* exit */
+        case 0x80:
+            if (*rdiRegisterPointer == 0){
+                exit(0);
+            }else{
+                printf("Exited with exit code %lld\n",*rdiRegisterPointer);
+                exit(*rdiRegisterPointer);
+            }
+            break;
+        
+        /* print */
+        case 0x86:
+            /* RDI contains pointer to 0x0 terminated string */
+            if (*rdiRegisterPointer >= (STACK_SIZE+HEAP_SIZE)){
+                puts("Attempted out of bounds read!");
+                exit(1);
+            }
+            printf("%s",MEMORY+(*rdiRegisterPointer));
+
+            break;
+
+        default:
+            puts("Invalid syscall number!");
+            exit(1);
+    }
+
+    return 1;
+}
+
+
 
 void executeInstruction(u_char* instruction,s_registers* registers,
                         unsigned long codeSize){
@@ -599,9 +696,13 @@ void executeInstruction(u_char* instruction,s_registers* registers,
     switch(opCode){
         /* push */
         case 0x10:
+            lenInstruction = pushInstruction(instruction);
+            *(registers->rip) = *(registers->rip) + lenInstruction;
             break;
         /* pop */
         case 0x11:
+            lenInstruction = popInstruction(instruction);
+            *(registers->rip) = *(registers->rip) + lenInstruction;
             break;
         /* add */
         case 0x12:
@@ -640,6 +741,8 @@ void executeInstruction(u_char* instruction,s_registers* registers,
             break;
         /* cmp */
         case 0x19:
+            lenInstruction = cmpInstruction(instruction);
+            *(registers->rip) = *(registers->rip) + lenInstruction;
             break;
         /* je */
         case 0x20:
@@ -684,6 +787,8 @@ void executeInstruction(u_char* instruction,s_registers* registers,
             break;
         /* syscall */
         case 0x25:
+            lenInstruction = syscallInstruction(codeSize);
+            *(registers->rip) = *(registers->rip) + lenInstruction;
             break;
         default:
             printf("Opcode (0x%x) is invalid!\n",opCode);
@@ -722,5 +827,4 @@ int main(int argc, char* argv[]){
   
     return 0;
 }
-
 

@@ -47,13 +47,14 @@ flags -> 0x60
 ––––––––– Syscalls –––––––––––––––––––––––––
 
 ( Not a part of compilation )
-write       -> 0x80
-open        -> 0x81 
-read        -> 0x82
-exec?       -> 0x83
-exit        -> 0x84
 
-printNum    -> 0x85
+exit        -> 0x80 [If RDI not 0, the RDI is printed]
+write       -> 0x81
+open        -> 0x82 
+read        -> 0x83
+exec?       -> 0x84
+
+print       -> 0x86
 
 
 –––––––––– Precompiler instructions ––––––––
@@ -113,6 +114,11 @@ else they return the new rip location
 !! IMPORTANT !!
 Both the stack and the heap grow upwards, which means to create space on the 
 stack you INCREMENT rsp instead of the usual substraction.
+
+When writing strings, you have to start at the back of the string and write it 
+in reverse order. Just like:
+    0x000a48
+To write a single 'H'
 
 –––––––– Appendix –––––––––––––––––
 [1] rbf will be used to change `cmp rax,0x1` (which is illegal) to a legal 

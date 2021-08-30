@@ -1,3 +1,25 @@
 !main
-mov *rax,0x0123456789abcdef
-jmp main
+# Auto-Generated Print Function
+mov rbf, 0x657320732774654c
+push rbf
+mov rbf, 0x20796d2066692065
+push rbf
+mov rbf, 0x726f772065646f63
+push rbf
+mov rbf, 0x000a2121736b
+push rbf
+mov rbf,0x20
+mov rcx,rsp
+sub rcx,rbf
+
+mov rax,0x86
+mov rdi,rcx
+syscall
+jmp normal_exit
+
+!normal_exit
+    mov rax,0x80
+    mov rdi,0x0
+    syscall
+
+
